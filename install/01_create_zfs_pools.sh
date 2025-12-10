@@ -119,7 +119,14 @@ fi
 
 ## Root Pool Creation
 echo "Creating system pool '${POOL_NAME}' on ${ROOT_DEVICE}..."
-zpool create "${POOL_NAME}" "${ROOT_DEVICE}"
+# Improve battery life on laptops
+#  atime off and autotrim only on A/C power
+zpool create \
+  -o ashift=12 \
+  -o autotrim=off \
+  -O atime=off \
+  -O mountpoint=none \
+  "${POOL_NAME}" "${ROOT_DEVICE}"
 
 ## Virtual Memory Devices (Swap & Dump)
 # Calculate swap/dump size based on 50% of physical RAM (Caiman default logic)
@@ -137,7 +144,7 @@ echo "Creating swap volume (${VOL_SIZE}, 4KB blocks)..."
 zfs create -b 4096 -V "${VOL_SIZE}" "${POOL_NAME}/swap"
 
 echo "Creating dump volume (${VOL_SIZE}, 128KB blocks)..."
-## Dump volume: 128K blocks, tuned for crash dumps.
+## Dump volume: tuned for crash dumps.
 # Matches installer behavior (refreservation cleared), features off:
 # - Disable compression (value 2 in history = off)
 # - Disable checksum (value 2 in history = off)
@@ -162,48 +169,56 @@ echo "Creating boot environment hierarchy..."
 
 # ROOT container
 zfs create \
-  -o mountpoint=legacy \
   -o canmount=off \
+  -o mountpoint=legacy \
   "${POOL_NAME}/ROOT"
 
 # Primary Boot Environment (OI)
 zfs create \
-  -o mountpoint=/ \
   -o canmount=noauto \
+  -o compression=lz4 \
+  -o mountpoint=/ \
   "${POOL_NAME}/ROOT/${BE_NAME}"
 
 # Separate /var dataset
 zfs create \
   -o canmount=noauto \
+  -o compression=lz4 \
   "${POOL_NAME}/ROOT/${BE_NAME}/var"
 
 # Set bootfs
 zpool set bootfs="${POOL_NAME}/ROOT/${BE_NAME}" "${POOL_NAME}"
 
-## Data Datasets (/export)
+## User Data Dataset (/home)
 if [[ -n "$DATA_DEVICE" ]]; then
-  # Case A: Dual ZFS Pools - Separate Data Pool
+  # Case A: Dual ZFS Pools - Separate Data Pool for /home
+  #  * default mount point is /
   echo "Creating separate data pool '${SECONDARY_POOL_NAME}' on ${DATA_DEVICE}..."
-  zfs create \
-    -o mountpoint=none \
+  zpool create \
+    -O mountpoint=none \    # instead of -m for readability
     "${SECONDARY_POOL_NAME}" "${DATA_DEVICE}"
 
-  echo " and dataset.."
+  echo " and /home dataset.."
   zfs create \
-    -o mountpoint=/export \
-    "${SECONDARY_POOL_NAME}/export"
-
-  zfs create "${SECONDARY_POOL_NAME}/export/home"
+    -o compression=lz4 \
+    -o primarycache=metadata \
+    -o devices=off \
+    -o mountpoint=/home \
+    "${SECONDARY_POOL_NAME}/home"
 else
-  # Case B: Single ZFS Pool - Export on Root Pool
-  echo "Creating export dataset on '${POOL_NAME}'..."
+  # Case B: Single ZFS Pool - /home on Root Pool
+  echo "Creating /home dataset on '${POOL_NAME}'..."
   zfs create \
-    -o mountpoint=/export \
-    "${POOL_NAME}/export"
-
-  zfs create "${POOL_NAME}/export/home"
+    -o compression=lz4 \
+    -o primarycache=metadata \
+    -o devices=off \
+    -o mountpoint=/home \
+    "${POOL_NAME}/home"
 fi
 
 zpool export "${POOL_NAME}"
+if [[ -n "$DATA_DEVICE" ]]; then
+  zpool export "${SECONDARY_POOL_NAME}"
+fi
 
 echo "SUCCESS: ZFS pool setup complete."
