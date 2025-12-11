@@ -15,7 +15,7 @@
 #
 #   Example run on my system: 3rd partition of my disk is where I am
 #   creating this zfs pool for illumos
-#     sudo ./01_create_zfs_pools.sh spool /dev/dsk/c2t00A075014881A463d0s2
+#     sudo ./01_create_zfs_pools.sh spool c2t00A075014881A463d0s2
 #
 #  2. Dual ZFS Pools (Separate Data Pool):
 #     sudo ./01_create_zfs_pools.sh spool /dev/dsk/c4t0d0s2 /dev/dsk/c4t0d0s3
@@ -66,7 +66,8 @@ BE_NAME="OI"
 ## Argument Parsing & Validation
 POOL_NAME="$1"
 ROOT_DEVICE="$2"
-DATA_DEVICE="$3"  # Optional 3rd argument
+# Set to empty when arg not provided so it's not 'unbound variable'
+DATA_DEVICE="${3-}"  # Optional 3rd argument
 
 if [[ -z "$POOL_NAME" || -z "$ROOT_DEVICE" ]]; then
   echo "Error: Missing required arguments."
