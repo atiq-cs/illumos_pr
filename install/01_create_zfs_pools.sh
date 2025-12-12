@@ -26,29 +26,29 @@
 #
 #   - Mimics OpenIndiana/Caiman automated installer layout on a single pool.
 #    however, changes BE name from 'openindiana' to 'OI' using variable:
-#    $BE_NAME
+#    $BE_NAME and keeps only /home for simplicity.
 #
+#    Caiman style looks like below:
 #    - <pool>/ROOT/openindiana
 #    - <pool>/ROOT/openindiana/var
 #    - <pool>/export
 #    - <pool>/export/home
 #
-#    in addition,
+#    and,
 #    - <pool>/swap
 #    - <pool>/dump
 #
-#   - If [data_slice / data_disk] is provided, creates a second pool for /export.
-#     - If [data_disk] is OMITTED, /export dataset is created on the root pool
+#   - If [data_slice / data_disk] is provided, creates a second pool for /home.
+#     - If [data_disk] is OMITTED, /home dataset is created on the root pool
 #        as usual.
 #   - Requires root privileges or run with sudo.
 #   - Destroys ALL data on target device(s).
 #
 # Refs:
-#   - OpenIndiana text installer ZFS layout (single rpool with /export)
+#   - OpenIndiana text installer ZFS layout (single rpool with /home)
 #   - Caiman org.openindiana.caiman:install metadata (handled by installer)
 #   - 2014-07 Troubleshooting ZFS Swap and Dump devices:
 #   https://web.archive.org/web/20250214125030/https://churchill.ddns.me.uk/post/troubleshooting-zfs-swap-and-dump-devices/
-#   - OpenIndiana ZFS root-on-ZFS layout and /export hierarchy
 #
 # tag: illumos, opensolaris, openindiana
 # -----------------------------------------------------------------------------
@@ -96,10 +96,10 @@ echo "  Root Pool:   ${POOL_NAME}"
 echo "  Root Device: ${ROOT_DEVICE}"
 
 if [[ -n "$DATA_DEVICE" ]]; then
-  echo "  Data Pool:   ${SECONDARY_POOL_NAME} (will mount at /export)"
+  echo "  Data Pool:   ${SECONDARY_POOL_NAME} (will mount at /home)"
   echo "  Data Device: ${DATA_DEVICE}"
 else
-  echo "  Data Layout: Single pool (export resides on ${POOL_NAME})"
+  echo "  Data Layout: Single pool (/home dir resides on ${POOL_NAME})"
 fi
 
 echo ""
@@ -207,7 +207,7 @@ if [[ -n "$DATA_DEVICE" ]]; then
     -o mountpoint=/home \
     "${SECONDARY_POOL_NAME}/home"
 
-  echo "Overview of datasets (additional pool):"
+  echo "Overview of datasets (/home on second pool):"
   zfs list -o name,used,refer,avail,mounted,mountpoint,canmount -r "$SECONDARY_POOL_NAME"
 
   zpool export "${SECONDARY_POOL_NAME}"
