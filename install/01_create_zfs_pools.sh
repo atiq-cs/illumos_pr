@@ -206,6 +206,11 @@ if [[ -n "$DATA_DEVICE" ]]; then
     -o devices=off \
     -o mountpoint=/home \
     "${SECONDARY_POOL_NAME}/home"
+
+  echo "Overview of datasets (additional pool):"
+  zfs list -o name,used,refer,avail,mounted,mountpoint,canmount -r "$SECONDARY_POOL_NAME"
+
+  zpool export "${SECONDARY_POOL_NAME}"
 else
   # Case B: Single ZFS Pool - /home on Root Pool
   echo "Creating /home dataset on '${POOL_NAME}'..."
@@ -217,9 +222,8 @@ else
     "${POOL_NAME}/home"
 fi
 
-zpool export "${POOL_NAME}"
-if [[ -n "$DATA_DEVICE" ]]; then
-  zpool export "${SECONDARY_POOL_NAME}"
-fi
+echo "Overview of datasets:"
+zfs list -o name,used,refer,avail,mounted,mountpoint,canmount -r "$POOL_NAME"
 
+zpool export "${POOL_NAME}"
 echo "SUCCESS: ZFS pool setup complete."
